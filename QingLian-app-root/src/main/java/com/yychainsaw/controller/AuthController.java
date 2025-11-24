@@ -6,9 +6,11 @@ import com.yychainsaw.service.AuthService;
 import com.yychainsaw.service.UserService;
 import com.yychainsaw.utils.JwtUtil;
 import com.yychainsaw.utils.Md5Util;
+import jakarta.validation.constraints.Pattern;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -19,6 +21,7 @@ import java.util.concurrent.TimeUnit;
 
 @RestController
 @RequestMapping("/auth")
+@Validated
 public class AuthController {
     @Autowired
     private StringRedisTemplate stringRedisTemplate;
@@ -28,7 +31,7 @@ public class AuthController {
     private UserService userService;
 
     @PostMapping("/register")
-    public Result register(String username, String password, String nickname) {
+    public Result register(@Pattern(regexp = "^[a-zA-Z_][a-zA-Z0-9_]{5,9}$") String username,@Pattern(regexp = "^\\S{6,}$") String password, String nickname) {
         User u = userService.findByUsername(username);
 
         if (u != null) {
@@ -39,8 +42,8 @@ public class AuthController {
         return Result.success();
     }
 
-
-    public Result login(String username, String password) {
+    @PostMapping("/login")
+    public Result login(@Pattern(regexp = "^[a-zA-Z_][a-zA-Z0-9_]{5,9}$") String username,@Pattern(regexp = "^\\S{6,}$") String password) {
         User LoginUser = userService.findByUsername(username);
 
         if (LoginUser == null || !Md5Util.getMD5String(password).equals(LoginUser.getPasswordHash())) {
