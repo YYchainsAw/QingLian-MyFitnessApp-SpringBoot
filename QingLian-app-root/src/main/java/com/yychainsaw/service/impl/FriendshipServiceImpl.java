@@ -2,9 +2,12 @@ package com.yychainsaw.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.yychainsaw.mapper.FriendshipMapper;
+import com.yychainsaw.mapper.UserMapper;
 import com.yychainsaw.pojo.entity.Friendship;
+import com.yychainsaw.pojo.entity.User;
 import com.yychainsaw.service.FriendshipService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -15,6 +18,10 @@ import java.util.UUID;
 public class FriendshipServiceImpl implements FriendshipService {
     @Autowired
     private FriendshipMapper friendshipMapper;
+    @Autowired
+    private UserMapper userMapper;
+    @Autowired
+    private SimpMessagingTemplate messagingTemplate;
 
     @Override
     public void sendRequest(UUID userId, UUID friendId) {
@@ -23,17 +30,50 @@ public class FriendshipServiceImpl implements FriendshipService {
         friendship.setFriendId(friendId);
         friendship.setStatus("PENDING");
         friendshipMapper.insert(friendship);
+
+        User friend = userMapper.selectById(friendId);
+
+        if (friend != null) {
+            String targetUsername = friend.getUsername(); // 应该是 "test001"
+
+            messagingTemplate.convertAndSendToUser(
+                    targetUsername,      // 发给 username
+                    "/queue/messages",   // 对应前端订阅 /user/queue/messages
+                    "收到新的好友申请"
+            );
+            System.out.println("WebSocket消息已发送给用户: " + targetUsername);
+        }
     }
 
     @Override
     public void acceptRequest(UUID userId, UUID friendId) {
-        // 更新状态为 ACCEPTED
+        // userId: 当前操作人（接收者）
+        // friendId: 对方（申请者）
+
+        // 1. 更新数据库状态
+        // 注意：数据库记录通常是 user_id(申请人) -> friend_id(接收人)
+        // 所以查询条件应该是：user_id = friendId (对方), friend_id = userId (我)
         QueryWrapper<Friendship> wrapper = new QueryWrapper<>();
-        wrapper.eq("user_id", userId).eq("friend_id", friendId);
+        wrapper.eq("user_id", friendId).eq("friend_id", userId);
 
         Friendship friendship = new Friendship();
         friendship.setStatus("ACCEPTED");
-        friendshipMapper.update(friendship, wrapper);
+        int rows = friendshipMapper.update(friendship, wrapper);
+
+        // 2. WebSocket 通知申请人 (如果数据库更新成功)
+        if (rows > 0) {
+            User requester = userMapper.selectById(friendId);
+            if (requester != null) {
+                messagingTemplate.convertAndSendToUser(
+                        requester.getUsername(), // 发给申请人
+                        "/queue/messages",
+                        "你的好友请求已被接受"
+                );
+                System.out.println("WebSocket消息已发送给申请人: " + requester.getUsername());
+            }
+        } else {
+            System.out.println("警告: 未找到对应的好友申请记录，无法接受。");
+        }
     }
 
     @Override
