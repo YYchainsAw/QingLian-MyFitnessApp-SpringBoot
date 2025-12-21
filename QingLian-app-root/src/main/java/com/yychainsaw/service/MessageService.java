@@ -8,11 +8,11 @@ import java.util.Map;
 import java.util.UUID;
 
 public interface MessageService {
-    MessageVO sendMessage(UUID uuid, MessageSendDTO dto);
+    MessageVO sendMessage(MessageSendDTO dto);
 
-    void markAsRead(UUID uuid, UUID uuid1);
+    void markAsRead(UUID senderId);
 
-    Long getUnreadCount(UUID uuid);
+    Long getUnreadCount();
 
-    List<Map<String, Object>> getChatHistory(UUID uuid, UUID uuid1);
+    List<Map<String, Object>> getChatHistory(UUID uuid1);
 }

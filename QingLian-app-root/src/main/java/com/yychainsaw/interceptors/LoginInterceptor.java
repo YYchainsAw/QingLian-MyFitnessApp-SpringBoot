@@ -20,7 +20,19 @@ public class LoginInterceptor implements HandlerInterceptor {
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+        // 1. 获取 Header
         String token = request.getHeader("Authorization");
+
+        // 2. 【新增】兼容处理：如果 Token 为空直接放行(或报错)，如果带 Bearer 前缀则去掉
+        if (token == null || token.isEmpty()) {
+            response.setStatus(401);
+            return false;
+        }
+
+        if (token.startsWith("Bearer ")) {
+            token = token.substring(7); // 去掉 "Bearer " (7个字符)
+        }
+
         try {
             ValueOperations<String, String> operations = stringRedisTemplate.opsForValue();
             String redisToken = operations.get(token);
@@ -30,18 +42,15 @@ public class LoginInterceptor implements HandlerInterceptor {
             }
 
             Map<String, Object> claims = JwtUtil.parseToken(token);
-            ThreadLocalUtil.set(claims);
 
-            Object userId = claims.get("id");
-            if (userId != null) {
-                request.setAttribute("id", String.valueOf(userId));
-            }
+            ThreadLocalUtil.set(claims);
 
             return true;
         } catch (Exception e) {
             response.setStatus(401);
             return false;
         }
+
     }
 
     @Override

@@ -10,19 +10,19 @@ import java.util.Map;
 import java.util.UUID;
 
 public interface PostService {
-    void createPost(UUID userId, PostCreateDTO dto);
+    void createPost(PostCreateDTO dto);
 
     Page<PostVO> getPostFeed(int page, int size);
 
     void likePost(Long postId);
 
-    void deletePost(UUID userId, Long postId);
+    void deletePost(Long postId);
 
-    void updatePost(UUID userId, Long postId, PostUpdateDTO dto);
+    void updatePost(Long postId, PostUpdateDTO dto);
 
     List<Map<String, Object>> getInfluencers();
 
-    List<Map<String, Object>> getPotentialFriends(UUID userId);
+    List<Map<String, Object>> getPotentialFriends();
 
     List<Map<String, Object>> getStats();
 }

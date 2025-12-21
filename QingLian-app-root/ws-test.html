@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket STOMP 调试工具</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.1/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    <style>
+        body { padding: 20px; font-family: "Microsoft YaHei", sans-serif; max-width: 800px; margin: 0 auto; }
+        .box { margin-bottom: 15px; padding: 15px; background: #f5f5f5; border-radius: 5px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input { width: 100%; padding: 8px; box-sizing: border-box; margin-bottom: 10px; }
+        button { padding: 8px 15px; cursor: pointer; background-color: #007bff; color: white; border: none; border-radius: 3px; }
+        button:disabled { background-color: #ccc; cursor: not-allowed; }
+        button.disconnect { background-color: #dc3545; }
+        #console { border: 1px solid #ccc; background: #333; color: #0f0; padding: 10px; height: 300px; overflow-y: auto; font-family: monospace; border-radius: 5px; }
+        p { margin: 5px 0; border-bottom: 1px solid #444; padding-bottom: 2px; }
+    </style>
+</head>
+<body>
+<h2>WebSocket STOMP 消息接收端</h2>
+
+<div class="box">
+    <label>1. 输入接收者 (User B) 的 Token (不带 Bearer):</label>
+    <input type="text" id="token" placeholder="粘贴 User B 的 Token...">
+
+    <div style="margin-top: 10px;">
+        <button onclick="connect()">连接 WebSocket</button>
+        <button onclick="disconnect()" disabled id="btnDisconnect" class="disconnect">断开连接</button>
+        <button onclick="clearConsole()" style="background-color: #6c757d; float: right;">清空控制台</button>
+    </div>
+</div>
+
+<div class="box">
+    <label>控制台日志:</label>
+    <div id="console"></div>
+</div>
+
+<script>
+    var stompClient = null;
+
+    function log(message) {
+        var consoleDiv = document.getElementById('console');
+        var p = document.createElement('p');
+        p.style.wordWrap = 'break-word';
+
+        // 获取当前时间
+        var now = new Date();
+        var timeString = now.getHours() + ":" + now.getMinutes() + ":" + now.getSeconds();
+
+        p.innerText = "[" + timeString + "] " + message;
+        consoleDiv.appendChild(p);
+        consoleDiv.scrollTop = consoleDiv.scrollHeight;
+    }
+
+    function clearConsole() {
+        document.getElementById('console').innerHTML = '';
+    }
+
+    function connect() {
+        var token = document.getElementById('token').value;
+        if (!token) {
+            alert("请输入 Token！");
+            return;
+        }
+
+        var socket = new SockJS('http://localhost:8080/ws');
+        stompClient = Stomp.over(socket);
+        // 禁用 STOMP 的调试日志，避免控制台太乱，只看我们自己的 log
+        stompClient.debug = null;
+
+        var headers = {
+            'Authorization': "Bearer " + token
+        };
+
+        log("正在尝试连接...");
+
+        stompClient.connect(headers, function (frame) {
+            log('连接成功! 用户认证信息: ' + frame.headers['user-name']);
+            document.getElementById('btnDisconnect').disabled = false;
+
+            // 订阅个人消息队列
+            stompClient.subscribe('/user/queue/messages', function (greeting) {
+                log('收到新消息: ' + greeting.body);
+                // 简单的浏览器通知
+                if (Notification.permission === "granted") {
+                    new Notification("新消息", { body: greeting.body });
+                }
+            });
+
+        }, function (error) {
+            log('连接失败: ' + error);
+            log('请检查 Token 是否过期，或后端服务是否启动。');
+        });
+    }
+
+    function disconnect() {
+        if (stompClient !== null) {
+            stompClient.disconnect();
+        }
+        document.getElementById('btnDisconnect').disabled = true;
+        log("已断开连接");
+    }
+
+    // 请求浏览器通知权限
+    if (Notification.permission !== "denied") {
+        Notification.requestPermission();
+    }
+</script>
+</body>
+</html>

@@ -6,6 +6,7 @@ import com.yychainsaw.mapper.UserMapper;
 import com.yychainsaw.pojo.entity.Friendship;
 import com.yychainsaw.pojo.entity.User;
 import com.yychainsaw.service.FriendshipService;
+import com.yychainsaw.utils.ThreadLocalUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
@@ -23,8 +24,11 @@ public class FriendshipServiceImpl implements FriendshipService {
     @Autowired
     private SimpMessagingTemplate messagingTemplate;
 
+
+
     @Override
-    public void sendRequest(UUID userId, UUID friendId) {
+    public void sendRequest(UUID friendId) {
+        UUID userId = ThreadLocalUtil.getCurrentUserId();
         Friendship friendship = new Friendship();
         friendship.setUserId(userId);
         friendship.setFriendId(friendId);
@@ -46,11 +50,11 @@ public class FriendshipServiceImpl implements FriendshipService {
     }
 
     @Override
-    public void acceptRequest(UUID userId, UUID friendId) {
+    public void acceptRequest(UUID friendId) {
         // userId: 当前操作人（接收者）
         // friendId: 对方（申请者）
         //数据库记录是 user_id(申请人) -> friend_id(接收人)
-
+        UUID userId = ThreadLocalUtil.getCurrentUserId();
         QueryWrapper<Friendship> wrapper = new QueryWrapper<>();
         wrapper.eq("user_id", friendId).eq("friend_id", userId);
 
@@ -75,8 +79,9 @@ public class FriendshipServiceImpl implements FriendshipService {
     }
 
     @Override
-    public void deleteFriend(UUID userId, UUID friendId) {
+    public void deleteFriend(UUID friendId) {
         // 双向删除 (SQL #3)
+        UUID userId = ThreadLocalUtil.getCurrentUserId();
         QueryWrapper<Friendship> wrapper = new QueryWrapper<>();
         wrapper.and(w -> w
                 .nested(i -> i.eq("user_id", userId).eq("friend_id", friendId))
@@ -87,12 +92,14 @@ public class FriendshipServiceImpl implements FriendshipService {
     }
 
     @Override
-    public List<Map<String, Object>> getFriendsActivePlans(UUID userId) {
+    public List<Map<String, Object>> getFriendsActivePlans() {
+        UUID userId = ThreadLocalUtil.getCurrentUserId();
         return friendshipMapper.selectFriendsActivePlans(userId);
     }
 
     @Override
-    public List<Map<String, Object>> getFriendRankings(UUID userId) {
+    public List<Map<String, Object>> getFriendRankings() {
+        UUID userId = ThreadLocalUtil.getCurrentUserId();
         return friendshipMapper.selectFriendRankings(userId);
     }
 }

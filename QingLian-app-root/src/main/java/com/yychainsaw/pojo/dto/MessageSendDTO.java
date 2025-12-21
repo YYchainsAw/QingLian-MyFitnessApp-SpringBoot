@@ -1,11 +1,8 @@
 package com.yychainsaw.pojo.dto;
 
-import com.baomidou.mybatisplus.annotation.TableField;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
-
-import java.util.UUID;
 
 @Data
 public class MessageSendDTO {

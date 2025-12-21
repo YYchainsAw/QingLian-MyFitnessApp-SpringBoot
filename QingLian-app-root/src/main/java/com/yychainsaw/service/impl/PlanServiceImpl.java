@@ -10,6 +10,7 @@ import com.yychainsaw.pojo.entity.Friendship;
 import com.yychainsaw.pojo.entity.Message;
 import com.yychainsaw.pojo.entity.Plan;
 import com.yychainsaw.service.PlanService;
+import com.yychainsaw.utils.ThreadLocalUtil;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -34,7 +35,8 @@ public class PlanServiceImpl implements PlanService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void createPlanAndNotifyFriends(UUID userId, PlanCreateDTO dto) {
+    public void createPlanAndNotifyFriends(PlanCreateDTO dto) {
+        UUID userId = ThreadLocalUtil.getCurrentUserId();
         // 1. DTO -> Entity 转换
         Plan plan = new Plan();
         BeanUtils.copyProperties(dto, plan); // 属性拷贝
@@ -77,7 +79,8 @@ public class PlanServiceImpl implements PlanService {
     }
 
     @Override
-    public List<Map<String, Object>> getActivePlans(UUID userId) {
+    public List<Map<String, Object>> getActivePlans() {
+        UUID userId = ThreadLocalUtil.getCurrentUserId();
         // SQL #8
         QueryWrapper<Plan> wrapper = new QueryWrapper<>();
         wrapper.eq("user_id", userId)

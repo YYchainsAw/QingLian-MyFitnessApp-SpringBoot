@@ -21,25 +21,20 @@ public class UserController {
 
     // 获取当前用户信息
     @GetMapping("/info")
-    public Result<UserVO> getUserInfo(@RequestAttribute("id") String userIdStr) {
-        // 假设拦截器已经解析 Token 并将 id 放入 RequestAttribute
-        UUID userId = UUID.fromString(userIdStr);
-        UserVO userVO = userService.getUserInfo(userId);
+    public Result<UserVO> getUserInfo() {
+        UserVO userVO = userService.getUserInfo();
         return Result.success(userVO);
     }
 
     @PutMapping("/update")
-    public Result updateProfile(@RequestAttribute("id") String userIdStr,
-                                @RequestBody @Validated UserUpdateDTO updateDTO) {
-        UUID userId = UUID.fromString(userIdStr);
-        userService.updateProfile(userId, updateDTO);
+    public Result updateProfile(@RequestBody @Validated UserUpdateDTO updateDTO) {
+        userService.updateProfile(updateDTO);
         return Result.success();
     }
 
     @DeleteMapping("/delete")
-    public Result deleteAccount(@RequestAttribute("id") String userIdStr) {
-        UUID userId = UUID.fromString(userIdStr);
-        userService.deleteUser(userId);
+    public Result deleteAccount() {
+        userService.deleteUser();
         return Result.success();
     }
 
@@ -61,9 +56,8 @@ public class UserController {
     // SQL #12: 用户的社交概览 (Dashboard)
     // GET /user/dashboard
     @GetMapping("/dashboard")
-    public Result<Map<String, Object>> getSocialDashboard(@RequestAttribute("id") String userIdStr) {
-        // 返回包含 friend_count, unread_msg_count, active_plan_count 的 Map
-        Map<String, Object> dashboard = userService.getUserSocialDashboard(UUID.fromString(userIdStr));
+    public Result<Map<String, Object>> getSocialDashboard() {
+        Map<String, Object> dashboard = userService.getUserSocialDashboard();
         return Result.success(dashboard);
     }
 

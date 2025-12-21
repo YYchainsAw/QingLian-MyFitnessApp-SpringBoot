@@ -10,13 +10,21 @@ import java.util.UUID;
 
 public interface UserService {
     User findByUsername(String username);
-    void registerUser(User user); // 仅供 AuthService 调用底层保存
-    UserVO getUserInfo(UUID userId);
-    void updateProfile(UUID userId, UserUpdateDTO userUpdateDTO);
-    void deleteUser(UUID userId);
-    void updateLastLoginTime(UUID userId);
+
+    void registerUser(User user);// 仅供 AuthService 调用底层保存
+
+    UserVO getUserInfo();
+
+    void updateProfile(UserUpdateDTO userUpdateDTO);
+
+    void deleteUser();
+
+    void updateLastLoginTime();
+
     List<UserVO> searchUsers(String trim);
+
     List<Map<String, Object>> getGenderWeightStats();
-    Map<String, Object> getUserSocialDashboard(UUID uuid);
+
+    Map<String, Object> getUserSocialDashboard();
 
 }

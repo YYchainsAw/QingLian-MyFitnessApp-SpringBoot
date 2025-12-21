@@ -7,9 +7,9 @@ import java.util.Map;
 import java.util.UUID;
 
 public interface PlanService {
-    void createPlanAndNotifyFriends(UUID userId, PlanCreateDTO dto);
+    void createPlanAndNotifyFriends(PlanCreateDTO dto);
 
-    List<Map<String, Object>> getActivePlans(UUID userId);
+    List<Map<String, Object>> getActivePlans();
 
     void completePlan(Long planId);
 }

@@ -7,6 +7,7 @@ import com.yychainsaw.pojo.dto.UserUpdateDTO;
 import com.yychainsaw.pojo.entity.User;
 import com.yychainsaw.pojo.vo.UserVO;
 import com.yychainsaw.service.UserService;
+import com.yychainsaw.utils.ThreadLocalUtil;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -26,7 +27,6 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public User findByUsername(String username) {
-        // MyBatis-Plus 写法：使用 Wrapper 构造查询条件
         LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(User::getUsername, username);
         return userMapper.selectOne(wrapper);
@@ -41,8 +41,8 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public UserVO getUserInfo(UUID userId) {
-        // JPA: findById() -> MP: selectById()
+    public UserVO getUserInfo() {
+        UUID userId = ThreadLocalUtil.getCurrentUserId();
         User user = userMapper.selectById(userId);
         if (user == null) {
             throw new RuntimeException("用户不存在");
@@ -54,51 +54,47 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public void updateProfile(UUID userId, UserUpdateDTO dto) {
+    public void updateProfile(UserUpdateDTO dto) {
+        UUID userId = ThreadLocalUtil.getCurrentUserId();
         // MyBatis-Plus 的 updateById 默认只更新非空字段
-        // 所以我们不需要先查出来再 set，直接创建一个只包含要修改字段的对象即可
         User user = new User();
         user.setUserId(userId);
 
-        // 复制属性，BeanUtils 会把 dto 里的 null 也复制过去，
-        // 但 MP 的 updateById 会忽略 null 值，所以这样写是安全的，
-        // 前提是 dto 里不想改的字段确实是 null
         BeanUtils.copyProperties(dto, user);
 
-        // 如果你想更严谨，可以手动 set
-        // if (dto.getNickname() != null) user.setNickname(dto.getNickname());
+        if (dto.getNickname() != null) user.setNickname(dto.getNickname());
 
         userMapper.updateById(user);
     }
 
     @Override
     @Transactional
-    public void deleteUser(UUID userId) {
-        // JPA: deleteById() -> MP: deleteById()
+    public void deleteUser() {
+        UUID userId = ThreadLocalUtil.getCurrentUserId();
         userMapper.deleteById(userId);
     }
 
     @Override
-    public void updateLastLoginTime(UUID userId) {
+    public void updateLastLoginTime() {
+        UUID userId = ThreadLocalUtil.getCurrentUserId();
         User user = new User();
         user.setUserId(userId);
         user.setLastLoginTime(LocalDateTime.now());
-        // 只更新 lastLoginTime 字段，其他字段不变
         userMapper.updateById(user);
     }
 
     @Override
     public List<UserVO> searchUsers(String keyword) {
         LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.like(User::getNickname, keyword) // 匹配昵称
+        queryWrapper.like(User::getNickname, keyword)
                 .or()
-                .like(User::getUsername, keyword) // 优化：通常用户也希望搜到用户名
+                .like(User::getUsername, keyword)
                 .select(User::getUserId, User::getUsername, User::getNickname, User::getAvatarUrl) // 优化：只查询需要的字段
-                .last("LIMIT 20"); // 优化：限制最大返回条数，保护数据库
+                .last("LIMIT 20");
 
         List<User> users = userMapper.selectList(queryWrapper);
 
-        // 转换为 VO
+
         return users.stream().map(user -> {
             UserVO vo = new UserVO();
             BeanUtils.copyProperties(user, vo);
@@ -117,7 +113,8 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public Map<String, Object> getUserSocialDashboard(UUID userId) {
+    public Map<String, Object> getUserSocialDashboard() {
+        UUID userId = ThreadLocalUtil.getCurrentUserId();
         return userMapper.selectUserSocialDashboard(userId);
     }
 

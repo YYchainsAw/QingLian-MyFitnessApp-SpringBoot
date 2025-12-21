@@ -25,9 +25,8 @@ public class PostController {
 
     // 操作 2: 发布帖子 (包含防刷帖和VIP赞逻辑)
     @PostMapping("/posts")
-    public Result createPost(@RequestAttribute("id") String userIdStr,
-                             @RequestBody @Validated PostCreateDTO dto) {
-        postService.createPost(UUID.fromString(userIdStr), dto);
+    public Result createPost(@RequestBody @Validated PostCreateDTO dto) {
+        postService.createPost(dto);
         return Result.success();
     }
 
@@ -47,9 +46,8 @@ public class PostController {
 
     // 操作 8: 删除帖子
     @DeleteMapping("/posts/{postId}")
-    public Result deletePost(@RequestAttribute("id") String userIdStr,
-                             @PathVariable Long postId) {
-        postService.deletePost(UUID.fromString(userIdStr), postId);
+    public Result deletePost(@PathVariable Long postId) {
+        postService.deletePost(postId);
         return Result.success();
     }
 
@@ -61,8 +59,8 @@ public class PostController {
 
     // 操作 14: 潜在好友推荐
     @GetMapping("/recommend-friends")
-    public Result<List<Map<String, Object>>> getPotentialFriends(@RequestAttribute("id") String userIdStr) {
-        return Result.success(postService.getPotentialFriends(UUID.fromString(userIdStr)));
+    public Result<List<Map<String, Object>>> getPotentialFriends() {
+        return Result.success(postService.getPotentialFriends());
     }
 
     // 操作 15: 数据统计 (后台用)

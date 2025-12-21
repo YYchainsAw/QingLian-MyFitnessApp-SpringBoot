@@ -5,13 +5,13 @@ import java.util.Map;
 import java.util.UUID;
 
 public interface FriendshipService {
-    void sendRequest(UUID userId, UUID friendId);
+    void sendRequest(UUID friendId);
 
-    void acceptRequest(UUID userId, UUID friendId);
+    void acceptRequest(UUID friendId);
 
-    void deleteFriend(UUID userId, UUID friendId);
+    void deleteFriend(UUID friendId);
 
-    List<Map<String, Object>> getFriendsActivePlans(UUID userId);
+    List<Map<String, Object>> getFriendsActivePlans();
 
-    List<Map<String, Object>> getFriendRankings(UUID userId);
+    List<Map<String, Object>> getFriendRankings();
 }

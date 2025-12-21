@@ -10,6 +10,7 @@ import com.yychainsaw.pojo.entity.Post;
 import com.yychainsaw.pojo.entity.User;
 import com.yychainsaw.pojo.vo.PostVO;
 import com.yychainsaw.service.PostService;
+import com.yychainsaw.utils.ThreadLocalUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,7 +31,8 @@ public class PostServiceImpl implements PostService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void createPost(UUID userId, PostCreateDTO dto) {
+    public void createPost(PostCreateDTO dto) {
+        UUID userId = ThreadLocalUtil.getCurrentUserId();
         // --- 逻辑 13: 防止恶意刷帖 (Trigger -> Java) ---
         // 查询该用户最新的一条帖子
         LambdaQueryWrapper<Post> lastPostQuery = new LambdaQueryWrapper<>();
@@ -83,7 +85,8 @@ public class PostServiceImpl implements PostService {
     }
 
     @Override
-    public void deletePost(UUID userId, Long postId) {
+    public void deletePost(Long postId) {
+        UUID userId = ThreadLocalUtil.getCurrentUserId();
         LambdaQueryWrapper<Post> query = new LambdaQueryWrapper<>();
         query.eq(Post::getPostId, postId).eq(Post::getUserId, userId);
         int deleted = postMapper.delete(query);
@@ -93,7 +96,8 @@ public class PostServiceImpl implements PostService {
     }
 
     @Override
-    public void updatePost(UUID userId, Long postId, PostUpdateDTO dto) {
+    public void updatePost(Long postId, PostUpdateDTO dto) {
+        UUID userId = ThreadLocalUtil.getCurrentUserId();
         // 1. 检查帖子是否存在且属于该用户
         LambdaQueryWrapper<Post> query = new LambdaQueryWrapper<>();
         query.eq(Post::getPostId, postId)
@@ -117,7 +121,8 @@ public class PostServiceImpl implements PostService {
     }
 
     @Override
-    public List<Map<String, Object>> getPotentialFriends(UUID userId) {
+    public List<Map<String, Object>> getPotentialFriends() {
+        UUID userId = ThreadLocalUtil.getCurrentUserId();
         return postMapper.selectPotentialFriends(userId);
     }
 

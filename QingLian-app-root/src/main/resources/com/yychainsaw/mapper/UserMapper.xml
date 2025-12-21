@@ -8,7 +8,7 @@
         SELECT
             u.user_id,
             u.username,
-            (SELECT COUNT(*) FROM friendships f WHERE f.user_id = u.user_id AND f.status = 'ACCEPTED') AS friend_count,
+            (SELECT COUNT(*) FROM friendships f WHERE f.user_id = u.user_id AND f.status = 'ACCEPTED' OR f.friend_id = u.user_id AND f.status = 'ACCEPTED') AS friend_count,
             (SELECT COUNT(*) FROM messages m WHERE m.receiver_id = u.user_id AND m.is_read = FALSE) AS unread_msg_count,
             (SELECT COUNT(*) FROM plans p WHERE p.user_id = u.user_id AND p.status = 'ACTIVE') AS active_plan_count
         FROM users u
