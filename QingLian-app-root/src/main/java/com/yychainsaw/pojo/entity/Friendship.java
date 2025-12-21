@@ -3,6 +3,7 @@ package com.yychainsaw.pojo.entity;
 import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.yychainsaw.anno.FRState;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -20,6 +21,7 @@ public class Friendship {
     @TableField("friend_id")
     private UUID friendId;
 
+    @FRState
     private String status;
 
     @TableField(value = "created_at", fill = FieldFill.INSERT)

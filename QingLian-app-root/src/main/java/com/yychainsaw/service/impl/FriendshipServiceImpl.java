@@ -34,11 +34,11 @@ public class FriendshipServiceImpl implements FriendshipService {
         User friend = userMapper.selectById(friendId);
 
         if (friend != null) {
-            String targetUsername = friend.getUsername(); // 应该是 "test001"
+            String targetUsername = friend.getUsername();
 
             messagingTemplate.convertAndSendToUser(
-                    targetUsername,      // 发给 username
-                    "/queue/messages",   // 对应前端订阅 /user/queue/messages
+                    targetUsername,
+                    "/queue/messages",
                     "收到新的好友申请"
             );
             System.out.println("WebSocket消息已发送给用户: " + targetUsername);
@@ -49,10 +49,8 @@ public class FriendshipServiceImpl implements FriendshipService {
     public void acceptRequest(UUID userId, UUID friendId) {
         // userId: 当前操作人（接收者）
         // friendId: 对方（申请者）
+        //数据库记录是 user_id(申请人) -> friend_id(接收人)
 
-        // 1. 更新数据库状态
-        // 注意：数据库记录通常是 user_id(申请人) -> friend_id(接收人)
-        // 所以查询条件应该是：user_id = friendId (对方), friend_id = userId (我)
         QueryWrapper<Friendship> wrapper = new QueryWrapper<>();
         wrapper.eq("user_id", friendId).eq("friend_id", userId);
 
