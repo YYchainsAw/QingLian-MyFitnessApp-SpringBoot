@@ -19,4 +19,6 @@ import java.util.Map;
 public interface MovementMapper extends BaseMapper<Movement> {
 
     List<MovementAnalyticsVO> getMovementAnalytics();
+
+    List<MovementVO> getAllMovements();
 }

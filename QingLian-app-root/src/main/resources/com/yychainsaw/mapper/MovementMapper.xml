@@ -14,4 +14,9 @@
         GROUP BY m1.category
     </select>
 
+    <select id="getAllMovements" resultType="com.yychainsaw.pojo.entity.Movement">
+        SELECT *
+        FROM movements
+    </select>
+
 </mapper>

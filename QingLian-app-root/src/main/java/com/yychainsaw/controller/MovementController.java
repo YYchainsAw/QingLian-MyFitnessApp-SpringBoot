@@ -2,6 +2,7 @@ package com.yychainsaw.controller;
 
 import com.yychainsaw.pojo.dto.MovementDTO;
 import com.yychainsaw.pojo.dto.MovementDifficultyDTO;
+import com.yychainsaw.pojo.dto.PageBean;
 import com.yychainsaw.pojo.dto.Result;
 import com.yychainsaw.pojo.vo.MovementAnalyticsVO;
 import com.yychainsaw.pojo.vo.MovementVO;
@@ -26,11 +27,11 @@ public class MovementController {
     }
 
     @GetMapping("/search")
-    public Result<List<MovementVO>> searchMovements(@RequestParam(required = false) String keyword){
-        if (keyword == null || keyword.trim().isEmpty()) {
-            return Result.success(List.of());
-        }
-        List<MovementVO> movements = movementService.search(keyword);
+    public Result<PageBean<MovementVO>> searchMovements(@RequestParam(required = false) String keyword,
+                                                        Integer pageNum,
+                                                        Integer pageSize){
+
+        PageBean<MovementVO> movements = movementService.search(keyword, pageNum, pageSize);
         return Result.success(movements);
     }
 

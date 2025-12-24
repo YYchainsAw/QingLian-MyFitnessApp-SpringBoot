@@ -4,17 +4,22 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
+import com.github.pagehelper.Page;
+import com.github.pagehelper.PageHelper;
 import com.yychainsaw.mapper.MovementMapper;
 import com.yychainsaw.pojo.dto.MovementDTO;
 import com.yychainsaw.pojo.dto.MovementDifficultyDTO;
+import com.yychainsaw.pojo.dto.PageBean;
 import com.yychainsaw.pojo.entity.Movement;
 import com.yychainsaw.pojo.vo.MovementAnalyticsVO;
 import com.yychainsaw.pojo.vo.MovementVO;
 import com.yychainsaw.service.movementService;
+import com.yychainsaw.utils.ThreadLocalUtil;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -37,19 +42,33 @@ public class movementServiceImpl implements movementService {
     }
 
     @Override
-    public List<MovementVO> search(String keyword) {
+    public PageBean<MovementVO> search(String keyword, Integer pageNum, Integer pageSize) {
+        PageHelper.startPage(pageNum, pageSize);
+
         LambdaQueryWrapper<Movement> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.like(Movement::getTitle, keyword)
-                .or().like(Movement::getDescription, keyword)
-                .or().like(Movement::getCategory, keyword);
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            queryWrapper.and(wrapper -> wrapper
+                    .like(Movement::getTitle, keyword)
+                    .or().like(Movement::getDescription, keyword)
+                    .or().like(Movement::getCategory, keyword)
+            );
+        }
 
         List<Movement> movements = movementMapper.selectList(queryWrapper);
+        Page<Movement> page = (Page<Movement>) movements;
+        long total = page.getTotal();
 
-        return movements.stream().map(m -> {
+        List<MovementVO> movementVOs = movements.stream().map(m -> {
             MovementVO vo = new MovementVO();
             BeanUtils.copyProperties(m, vo);
             return vo;
         }).collect(Collectors.toList());
+
+        PageBean<MovementVO> pageBean = new PageBean<>();
+        pageBean.setTotal(total);
+        pageBean.setItems(movementVOs);
+
+        return pageBean;
     }
 
     @Override
