@@ -1,3 +1,4 @@
+# --- Android ---
 *.iml
 .gradle
 /local.properties
@@ -7,17 +8,34 @@
 /.idea/workspace.xml
 /.idea/navEditor.xml
 /.idea/assetWizardSettings.xml
+/.idea/codeStyles
+/.idea/dictionaries
 .DS_Store
 /build
 /captures
 .externalNativeBuild
 .cxx
-local.properties
 
-# Google Services rules
+# --- Android Studio 生成的构建目录 ---
+# 确保忽略所有模块的 build 文件夹
+**/build
+
+# --- 密钥与敏感信息 (非常重要) ---
+key.properties
+local.properties
 google-services.json
 
-# Android Studio generated
-/app/build
-/app/src/test
-/app/src/androidTest
+# --- 临时文件与日志 ---
+*.log
+*.hprof
+*.keystore
+*.jks
+
+# --- 系统文件 ---
+Thumbs.db
+Desktop.ini
+
+# --- 误伤修复 ---
+# 之前你忽略了测试代码，这里确保它们不被忽略（其实只要上面不写忽略就行，这里是双重保险）
+!/app/src/test
+!/app/src/androidTest

@@ -10,7 +10,7 @@ object NetworkModule {
     // 模拟器访问本地电脑必须用这个 IP
     private const val BASE_URL = "https://6874fe46.r7.cpolar.top/"
     
-    // 简单的 Token 存储 (实际开发建议用 DataStore)
+
     var userToken: String? = null
 
     private val client = OkHttpClient.Builder()
