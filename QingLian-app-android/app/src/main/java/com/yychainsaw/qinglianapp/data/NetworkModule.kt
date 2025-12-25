@@ -8,7 +8,7 @@ import com.yychainsaw.qinglianapp.data.api.ApiService
 
 object NetworkModule {
     // 模拟器访问本地电脑必须用这个 IP
-    private const val BASE_URL = "https://6874fe46.r7.cpolar.top/"
+    private const val BASE_URL = "https://50c7ea10.r7.cpolar.top/"
     
 
     var userToken: String? = null

@@ -22,12 +22,45 @@
         ORDER BY total_workouts DESC LIMIT 5
     </select>
 
-    <select id="selectFriendList" resultType="com.yychainsaw.pojo.entity.User">
-        SELECT u.* FROM users u
-        JOIN friendships f ON (f.friend_id = u.user_id OR f.user_id = u.user_id)
+    <!-- 修改 resultType 为新的 VO -->
+    <select id="selectFriendList" resultType="com.yychainsaw.pojo.vo.FriendListVO">
+        SELECT
+            u.user_id,
+            u.username,
+            u.nickname,
+            u.avatar_url,
+            -- 子查询 1: 获取最后一条消息内容 (双向：我发给他的 OR 他发给我的)
+            (
+                SELECT content
+                FROM messages m
+                WHERE (m.sender_id = u.user_id AND m.receiver_id = #{userId})
+                   OR (m.sender_id = #{userId} AND m.receiver_id = u.user_id)
+                ORDER BY m.sent_at DESC
+                LIMIT 1
+            ) AS last_message,
+            -- 子查询 2: 获取最后一条消息时间
+            (
+                SELECT sent_at
+                FROM messages m
+                WHERE (m.sender_id = u.user_id AND m.receiver_id = #{userId})
+                   OR (m.sender_id = #{userId} AND m.receiver_id = u.user_id)
+                ORDER BY m.sent_at DESC
+                LIMIT 1
+            ) AS last_message_time,
+            -- 子查询 3: 统计未读数 (仅统计他发给我的未读消息)
+            (
+                SELECT COUNT(*)
+                FROM messages m
+                WHERE m.sender_id = u.user_id
+                  AND m.receiver_id = #{userId}
+                  AND m.is_read = false
+            ) AS unread_count
+        FROM users u
+                 JOIN friendships f ON (f.friend_id = u.user_id OR f.user_id = u.user_id)
         WHERE (f.user_id = #{userId} OR f.friend_id = #{userId})
-        AND f.status = 'ACCEPTED'
-        AND u.user_id != #{userId}
+          AND f.status = 'ACCEPTED'
+          AND u.user_id != #{userId}
     </select>
+
 
 </mapper>

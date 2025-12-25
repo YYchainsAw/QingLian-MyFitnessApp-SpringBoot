@@ -1,9 +1,8 @@
 package com.yychainsaw.qinglianapp.data.model.vo
 
 data class FriendPlanVO(
-    val friendId: String,
-    val friendName: String,
-    val friendAvatar: String?,
-    val planName: String,
-    val progress: Int // 0-100
+    val username: String,
+    val title: String,
+    val status: String, // e.g., "ACTIVE"
+    val endDate: String
 )

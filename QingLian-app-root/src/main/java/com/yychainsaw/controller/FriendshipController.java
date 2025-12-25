@@ -2,6 +2,7 @@ package com.yychainsaw.controller;
 
 import com.yychainsaw.pojo.dto.Result;
 import com.yychainsaw.pojo.entity.User;
+import com.yychainsaw.pojo.vo.FriendListVO;
 import com.yychainsaw.pojo.vo.FriendPlanVO;
 import com.yychainsaw.pojo.vo.FriendRankingVO;
 import com.yychainsaw.service.FriendshipService;
@@ -20,8 +21,8 @@ public class FriendshipController {
     private FriendshipService friendshipService;
 
     @GetMapping
-    public Result<List<User>> getFriendList() {
-        List<User> friends = friendshipService.getFriendList();
+    public Result<List<FriendListVO>> getFriendList() {
+        List<FriendListVO> friends = friendshipService.getFriendList();
         return Result.success(friends);
     }
 

@@ -23,7 +23,9 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        registry.addEndpoint("/ws").setAllowedOriginPatterns("*").withSockJS();
+        registry.addEndpoint("/ws")
+                .setAllowedOriginPatterns("*")
+                .withSockJS();
     }
 
     @Override
@@ -47,19 +49,24 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                         String token = authHeader.substring(7);
                         try {
                             Map<String, Object> map = JwtUtil.parseToken(token);
-                            String username = (String) map.get("username");
 
-                            if (username != null) {
+
+                            String id = (String) map.get("id");
+
+
+                            if (id != null) {
+                                final String finalPrincipalName = id;
                                 Principal user = new Principal() {
                                     @Override
                                     public String getName() {
-                                        return username;
+                                        return finalPrincipalName; // 返回 ID
                                     }
                                 };
-
                                 accessor.setUser(user);
-                                System.out.println("WebSocket 拦截器: 用户已认证 -> " + username);
+                                System.out.println("WebSocket 拦截器: 用户已认证 (ID) -> " + finalPrincipalName);
                             }
+                            // =============================================
+
                         } catch (Exception e) {
                             System.out.println("WebSocket Token 验证失败: " + e.getMessage());
                         }

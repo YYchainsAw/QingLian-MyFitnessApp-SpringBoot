@@ -7,7 +7,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 
 object RetrofitClient {
-    private const val BASE_URL = "https://6874fe46.r7.cpolar.top/" // 模拟器地址
+    private const val BASE_URL = "https://50c7ea10.r7.cpolar.top/" // 模拟器地址
 
     // 全局保存 Token，在 MainActivity 启动或登录成功时赋值
     var authToken: String? = null

@@ -1,11 +1,11 @@
 package com.yychainsaw.service;
 
-import com.yychainsaw.pojo.entity.User;
+
+import com.yychainsaw.pojo.vo.FriendListVO;
 import com.yychainsaw.pojo.vo.FriendPlanVO;
 import com.yychainsaw.pojo.vo.FriendRankingVO;
 
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 public interface FriendshipService {
@@ -19,5 +19,5 @@ public interface FriendshipService {
 
     List<FriendRankingVO> getFriendRankings();
 
-    List<User> getFriendList();
+    List<FriendListVO> getFriendList();
 }

@@ -5,6 +5,7 @@ import com.yychainsaw.mapper.FriendshipMapper;
 import com.yychainsaw.mapper.UserMapper;
 import com.yychainsaw.pojo.entity.Friendship;
 import com.yychainsaw.pojo.entity.User;
+import com.yychainsaw.pojo.vo.FriendListVO;
 import com.yychainsaw.pojo.vo.FriendPlanVO;
 import com.yychainsaw.pojo.vo.FriendRankingVO;
 import com.yychainsaw.service.FriendshipService;
@@ -106,9 +107,8 @@ public class FriendshipServiceImpl implements FriendshipService {
     }
 
     @Override
-    public List<User> getFriendList() {
+    public List<FriendListVO> getFriendList() {
         UUID userId = ThreadLocalUtil.getCurrentUserId();
-
         return friendshipMapper.selectFriendList(userId);
     }
 }

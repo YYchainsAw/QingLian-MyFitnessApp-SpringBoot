@@ -58,18 +58,20 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 
-    // 1. 网络请求 (Retrofit + OkHttp + Gson)
+
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.11.0")
 
-    // 2. 图片加载 (Coil - 专为 Compose 设计)
+
     implementation("io.coil-kt:coil-compose:2.4.0")
 
-    // 3. 导航 (Compose Navigation)
     implementation("androidx.navigation:navigation-compose:2.7.5")
     implementation("androidx.compose.material:material-icons-extended:1.5.4")
 
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
 
+    implementation("com.github.NaikSoftware:StompProtocolAndroid:1.6.6")
+    implementation("io.reactivex.rxjava2:rxjava:2.2.21")
+    implementation("io.reactivex.rxjava2:rxandroid:2.1.1")
 }

@@ -3,6 +3,7 @@ package com.yychainsaw.mapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.yychainsaw.pojo.entity.Friendship;
 import com.yychainsaw.pojo.entity.User;
+import com.yychainsaw.pojo.vo.FriendListVO;
 import com.yychainsaw.pojo.vo.FriendPlanVO;
 import com.yychainsaw.pojo.vo.FriendRankingVO;
 import org.apache.ibatis.annotations.Mapper;
@@ -19,5 +20,5 @@ public interface FriendshipMapper extends BaseMapper<Friendship> {
 
     List<FriendRankingVO> selectFriendRankings(UUID userId);
 
-    List<User> selectFriendList(UUID userId);
+    List<FriendListVO> selectFriendList(UUID userId);
 }
