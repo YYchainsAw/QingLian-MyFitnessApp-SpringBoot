@@ -10,7 +10,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.*
@@ -26,22 +25,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
-import com.yychainsaw.qinglianapp.data.model.dto.MessageSendDTO
 import com.yychainsaw.qinglianapp.data.model.entity.MessageEntity
 import com.yychainsaw.qinglianapp.network.RetrofitClient
 import com.yychainsaw.qinglianapp.network.WebSocketManager
 import com.yychainsaw.qinglianapp.ui.community.resolveImageUrl
 import com.yychainsaw.qinglianapp.ui.theme.QingLianYellow
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(
     navController: NavController,
-    friendId: String,
+    friendId: String, // 可能是用户ID，也可能是 "GROUP_{groupId}"
     friendName: String,
     friendAvatar: String?
 ) {
@@ -49,42 +44,58 @@ fun ChatScreen(
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
 
+    // --- 1. 识别是否为群聊 ---
+    val isGroupChat = friendId.startsWith("GROUP_")
+    val realChatId = if (isGroupChat) friendId.removePrefix("GROUP_") else friendId
+
     var messages by remember { mutableStateOf<List<MessageEntity>>(emptyList()) }
     var inputText by remember { mutableStateOf("") }
     var currentUserId by remember { mutableStateOf("") }
     var currentUserAvatar by remember { mutableStateOf<String?>(null) }
 
-    // 新增：判断是否需要显示“接受好友请求”按钮
-    // 简单逻辑：如果进入聊天界面但对方不在好友列表中（或者通过特定消息进入），则显示
-    // 这里我们通过尝试获取好友列表来判断，如果不在列表中，假设是请求状态
-    var isFriend by remember { mutableStateOf(true) }
+    // 好友状态逻辑（仅私聊有效，群聊默认允许发言）
+    var isFriend by remember { mutableStateOf(isGroupChat) }
 
     // 初始化加载
     LaunchedEffect(Unit) {
         try {
+            // 获取当前用户信息
             val userRes = RetrofitClient.apiService.getUserInfo()
             if (userRes.isSuccess()) {
                 currentUserId = userRes.data?.userId ?: userRes.data?.username ?: ""
                 currentUserAvatar = userRes.data?.avatarUrl
             }
-            loadHistory(friendId) { msgs -> messages = msgs }
-            RetrofitClient.apiService.markAsRead(friendId)
 
-            // 检查是否已经是好友
-            val friendsRes = RetrofitClient.apiService.getFriends()
-            if (friendsRes.isSuccess()) {
-                val friendList = friendsRes.data ?: emptyList()
-                isFriend = friendList.any { it.userId == friendId }
+            // 加载历史记录
+            loadHistory(realChatId, isGroupChat) { msgs -> messages = msgs }
+
+            // 标记已读 & 检查好友关系
+            if (!isGroupChat) {
+                RetrofitClient.apiService.markAsRead(realChatId)
+                val friendsRes = RetrofitClient.apiService.getFriends()
+                if (friendsRes.isSuccess()) {
+                    val friendList = friendsRes.data ?: emptyList()
+                    isFriend = friendList.any { it.userId == realChatId }
+                }
             }
         } catch (e: Exception) {
             e.printStackTrace()
         }
     }
 
-    // ... (WebSocket 监听逻辑保持不变) ...
+    // --- 2. WebSocket 监听逻辑 ---
     LaunchedEffect(Unit) {
         WebSocketManager.messageFlow.collect { msgVO ->
-            if (msgVO.senderId == friendId) {
+            // 判断消息是否属于当前会话
+            val isCurrentSessionMsg = if (isGroupChat) {
+                // 群聊：receiverId 通常是群ID
+                msgVO.receiverId == realChatId
+            } else {
+                // 私聊：发送者是对方
+                msgVO.senderId == realChatId
+            }
+
+            if (isCurrentSessionMsg) {
                 val newEntity = MessageEntity(
                     msgId = msgVO.id,
                     senderId = msgVO.senderId,
@@ -92,55 +103,36 @@ fun ChatScreen(
                     content = msgVO.content,
                     sentAt = msgVO.sentAt,
                     isRead = true
+                    // 移除 avatarUrl，因为 MessageEntity 定义中没有该字段
                 )
                 messages = messages + newEntity
-                try { RetrofitClient.apiService.markAsRead(friendId) } catch (_: Exception) {}
+
+                // 收到消息即标记已读 (仅私聊)
+                if (!isGroupChat) {
+                    try { RetrofitClient.apiService.markAsRead(realChatId) } catch (_: Exception) {}
+                }
             }
         }
     }
 
-    // ... (自动滚动逻辑保持不变) ...
+    // 自动滚动到底部
     LaunchedEffect(messages.size) {
         if (messages.isNotEmpty()) {
             listState.scrollToItem(0)
         }
     }
 
-    // 接受好友请求并发送问候语
+    // 接受好友请求逻辑 (仅私聊)
     fun acceptAndGreet() {
         scope.launch {
             try {
-                // 1. 接受请求
-                val acceptRes = RetrofitClient.apiService.acceptFriendRequest(friendId)
+                val acceptRes = RetrofitClient.apiService.acceptFriendRequest(realChatId)
                 if (acceptRes.isSuccess()) {
                     isFriend = true
                     Toast.makeText(context, "已添加好友", Toast.LENGTH_SHORT).show()
-
-                    // 2. 自动发送问候语
-                    val greeting = "你好，很高兴认识你！"
-                    val sendDto = MessageSendDTO(receiverId = friendId, content = greeting)
-                    val sendRes = RetrofitClient.apiService.sendMessage(sendDto)
-
-                    if (sendRes.isSuccess() && sendRes.data != null) {
-                        // 更新本地界面
-                        val timeStr = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()).format(Date())
-                        val tempMsg = MessageEntity(
-                            msgId = System.currentTimeMillis(),
-                            senderId = currentUserId,
-                            receiverId = friendId,
-                            content = greeting,
-                            sentAt = timeStr,
-                            isRead = false
-                        )
-                        messages = messages + tempMsg
-                        WebSocketManager.emitMessage(sendRes.data)
-                    }
-                } else {
-                    Toast.makeText(context, "操作失败: ${acceptRes.message}", Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
-                Toast.makeText(context, "网络错误", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -149,7 +141,14 @@ fun ChatScreen(
         topBar = {
             Column {
                 TopAppBar(
-                    title = { Text(friendName, fontWeight = FontWeight.Bold) },
+                    title = {
+                        Column {
+                            Text(friendName, fontWeight = FontWeight.Bold)
+                            if (isGroupChat) {
+                                Text("群聊 (${messages.size}条消息)", fontSize = 10.sp, color = Color.Gray)
+                            }
+                        }
+                    },
                     navigationIcon = {
                         IconButton(onClick = { navController.popBackStack() }) {
                             Icon(Icons.Default.ArrowBack, contentDescription = "Back")
@@ -157,27 +156,25 @@ fun ChatScreen(
                     },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
                 )
-                // --- 新增：如果不是好友，显示接受请求栏 ---
-                if (!isFriend) {
+                // 非好友且非群聊时显示接受栏
+                if (!isFriend && !isGroupChat) {
                     Surface(
                         color = QingLianYellow.copy(alpha = 0.2f),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            modifier = Modifier.padding(8.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text("对方请求添加你为好友", fontSize = 14.sp, color = Color.DarkGray)
+                            Text("对方请求添加你为好友", fontSize = 14.sp)
                             Button(
                                 onClick = { acceptAndGreet() },
                                 colors = ButtonDefaults.buttonColors(containerColor = QingLianYellow),
                                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
                                 modifier = Modifier.height(32.dp)
                             ) {
-                                Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("接受", fontSize = 12.sp, color = Color.Black)
+                                Text("接受", color = Color.Black, fontSize = 12.sp)
                             }
                         }
                     }
@@ -185,8 +182,7 @@ fun ChatScreen(
             }
         },
         bottomBar = {
-            // 只有是好友时才允许输入，或者根据需求开放
-            if (isFriend) {
+            if (isFriend || isGroupChat) {
                 Row(
                     modifier = Modifier.fillMaxWidth().background(Color.White).padding(8.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -203,30 +199,41 @@ fun ChatScreen(
                         onClick = {
                             if (inputText.isNotBlank() && currentUserId.isNotBlank()) {
                                 val contentToSend = inputText
-                                val timeStr = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()).format(Date())
-
-                                val tempMsg = MessageEntity(
-                                    msgId = System.currentTimeMillis(),
-                                    senderId = currentUserId,
-                                    receiverId = friendId,
-                                    content = contentToSend,
-                                    sentAt = timeStr,
-                                    isRead = false
-                                )
-                                messages = messages + tempMsg
-                                inputText = ""
-
+                                inputText = "" // 立即清空输入框，提升体验
                                 scope.launch {
                                     try {
-                                        val sendDto = MessageSendDTO(receiverId = friendId, content = contentToSend)
-                                        val response = RetrofitClient.apiService.sendMessage(sendDto)
-                                        if (response.isSuccess() && response.data != null) {
-                                            WebSocketManager.emitMessage(response.data)
+                                        // --- 修复开始：区分群聊和私聊传参 ---
+                                        val sendDto = if (isGroupChat) {
+                                            // 群聊：传 groupId，receiverId 为 null
+                                            MessageSendDTO(
+                                                groupId = realChatId.toLong(),
+                                                content = contentToSend
+                                            )
                                         } else {
-                                            Toast.makeText(context, "发送失败", Toast.LENGTH_SHORT).show()
+                                            // 私聊：传 receiverId，groupId 为 null
+                                            MessageSendDTO(
+                                                receiverId = realChatId,
+                                                content = contentToSend
+                                            )
+                                        }
+                                        // --- 修复结束 ---
+
+                                        val res = RetrofitClient.apiService.sendMessage(sendDto)
+                                        if (res.isSuccess() && res.data != null) {
+                                            val msgVO = res.data
+                                            val newEntity = MessageEntity(
+                                                msgId = msgVO.id,
+                                                senderId = currentUserId,
+                                                receiverId = realChatId, // 本地存储时，receiverId 存群ID或对方ID均可，只要加载逻辑一致
+                                                content = contentToSend,
+                                                sentAt = msgVO.sentAt,
+                                                isRead = true
+                                            )
+                                            messages = messages + newEntity
                                         }
                                     } catch (e: Exception) {
                                         e.printStackTrace()
+                                        Toast.makeText(context, "发送失败: ${e.message}", Toast.LENGTH_SHORT).show()
                                     }
                                 }
                             }
@@ -249,13 +256,15 @@ fun ChatScreen(
         ) {
             items(messages.reversed()) { msg ->
                 val isMe = msg.senderId == currentUserId
-                MessageItemRow(msg = msg, isMe = isMe, avatarUrl = if (isMe) currentUserAvatar else friendAvatar)
+                // 修复：由于 MessageEntity 没有 avatarUrl，我们使用传入的 friendAvatar (群聊时为群头像)
+                val displayAvatar = if (isMe) currentUserAvatar else friendAvatar
+
+                MessageItemRow(msg = msg, isMe = isMe, avatarUrl = displayAvatar)
             }
         }
     }
 }
 
-// ... MessageItemRow, ChatAvatar, loadHistory 保持不变 ...
 @Composable
 fun MessageItemRow(msg: MessageEntity, isMe: Boolean, avatarUrl: String?) {
     Row(
@@ -287,9 +296,15 @@ fun ChatAvatar(url: String?) {
     }
 }
 
-suspend fun loadHistory(friendId: String, onResult: (List<MessageEntity>) -> Unit) {
+// --- 3. 历史记录加载逻辑 ---
+suspend fun loadHistory(chatId: String, isGroup: Boolean, onResult: (List<MessageEntity>) -> Unit) {
     try {
-        val response = RetrofitClient.apiService.getMessageHistory(friendId, 1, 50)
+        val response = if (isGroup) {
+            RetrofitClient.apiService.getGroupMessageHistory(chatId.toLong(), 1, 50)
+        } else {
+            RetrofitClient.apiService.getMessageHistory(chatId, 1, 50)
+        }
+
         if (response.isSuccess()) {
             onResult(response.data?.items ?: emptyList())
         }

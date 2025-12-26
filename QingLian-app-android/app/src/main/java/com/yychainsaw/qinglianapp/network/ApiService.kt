@@ -135,9 +135,12 @@ interface ApiService {
     @GET("friendships")
     suspend fun getFriends(): ApiResponse<List<FriendVO>>
 
-    // ✅ 修复确认：使用 @Query 且路径不带参数
+
     @POST("friendships/request")
     suspend fun sendFriendRequest(@Query("friendId") friendId: String): ApiResponse<Void>
+
+    @GET("friendships/request/pending")
+    suspend fun getPendingFriendRequests(): ApiResponse<List<FriendVO>>
 
     @PUT("friendships/{friendId}/accept")
     suspend fun acceptFriendRequest(@Path("friendId") friendId: String): ApiResponse<Void>
@@ -152,8 +155,6 @@ interface ApiService {
     suspend fun getFriendRankings(): ApiResponse<List<FriendRankingVO>>
 
     // ================= 群组模块 =================
-    @POST("groups")
-    suspend fun createGroup(@Body dto: GroupCreateDTO): ApiResponse<ChatGroupVO>
 
     @POST("groups/{groupId}/members")
     suspend fun addGroupMember(
@@ -166,6 +167,36 @@ interface ApiService {
         @Path("groupId") groupId: Long,
         @Body body: Map<String, Long>
     ): ApiResponse<Void>
+
+    // ... (保留之前的接口) ...
+
+    // ================= 群组模块 (更新版) =================
+    // 1. 创建群聊
+    @POST("groups")
+    suspend fun createGroup(@Body dto: GroupCreateDTO): ApiResponse<Long> // 返回 groupId
+
+    // 2. 获取我的群组列表
+    @GET("groups")
+    suspend fun getMyGroups(): ApiResponse<List<ChatGroupVO>>
+
+    // 3. 批量邀请成员 (修改为 Body 传参)
+    @POST("groups/{groupId}/members")
+    suspend fun addGroupMembers(
+        @Path("groupId") groupId: Long,
+        @Body memberDto: GroupMemberAddDTO
+    ): ApiResponse<Void>
+
+    // 4. 获取群成员
+    @GET("groups/{groupId}/members")
+    suspend fun getGroupMembers(@Path("groupId") groupId: Long): ApiResponse<List<GroupMemberVO>> // 假设你有 GroupMemberVO
+
+    // 5. 获取群聊历史消息
+    @GET("messages/groups/{groupId}/history")
+    suspend fun getGroupMessageHistory(
+        @Path("groupId") groupId: Long,
+        @Query("pageNum") pageNum: Int = 1,
+        @Query("pageSize") pageSize: Int = 20
+    ): ApiResponse<PageBean<MessageEntity>>
 }
 
 // 辅助类保持不变

@@ -10,7 +10,6 @@ public class FriendListVO {
     private String username;
     private  String nickname;
     private String avatarUrl;
-    private String email;
     
     // 新增字段：用于前端展示会话状态
     private String lastMessage;

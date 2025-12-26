@@ -20,4 +20,6 @@ public interface FriendshipService {
     List<FriendRankingVO> getFriendRankings();
 
     List<FriendListVO> getFriendList();
+
+    List<FriendListVO> getPendingRequests();
 }

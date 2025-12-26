@@ -38,16 +38,13 @@ public class MessageController {
         MessageVO messageVO = messageService.sendMessage(dto);
 
         if (dto.getGroupId() != null) {
-            // === 群聊模式 ===
-            // 推送到 Topic: /topic/group.{groupId}
-            // 所有订阅该群的客户端都会收到
+
             messagingTemplate.convertAndSend(
                     "/topic/group." + dto.getGroupId(),
                     messageVO
             );
         } else {
-            // === 私聊模式 ===
-            // 推送到 User Queue: /user/{userId}/queue/messages
+
             messagingTemplate.convertAndSendToUser(
                     dto.getReceiverId(),
                     "/queue/messages",

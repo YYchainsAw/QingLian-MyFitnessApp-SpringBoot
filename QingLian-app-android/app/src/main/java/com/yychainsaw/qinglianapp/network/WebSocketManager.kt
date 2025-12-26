@@ -17,7 +17,7 @@ import ua.naiksoftware.stomp.dto.StompMessage
 
 object WebSocketManager {
     // 1. WebSocket 地址
-    private const val WS_URL = "wss://50c7ea10.r7.cpolar.top/ws/websocket"
+    private const val WS_URL = "wss://7ed0e058.r7.cpolar.top/ws/websocket"
 
     // 2. 订阅路径：只负责接收
     private const val SUBSCRIBE_DESTINATION = "/user/queue/messages"

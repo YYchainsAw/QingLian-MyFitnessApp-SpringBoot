@@ -8,7 +8,7 @@ public class MessageSendDTO {
     // 移除 @NotNull，因为群聊时不需要 receiverId
     private String receiverId;
 
-    // 新增群组ID (可选)
+
     private Long groupId;
 
     @NotBlank(message = "消息内容不能为空")

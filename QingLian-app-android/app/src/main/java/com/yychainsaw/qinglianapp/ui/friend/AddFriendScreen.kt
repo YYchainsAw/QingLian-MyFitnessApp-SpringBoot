@@ -25,12 +25,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.yychainsaw.qinglianapp.data.model.dto.MessageSendDTO // 新增导入
 import com.yychainsaw.qinglianapp.data.model.vo.UserVO
 import com.yychainsaw.qinglianapp.network.RetrofitClient
 import com.yychainsaw.qinglianapp.ui.community.resolveImageUrl
 import com.yychainsaw.qinglianapp.ui.theme.QingLianBlue
 import com.yychainsaw.qinglianapp.ui.theme.QingLianYellow
 import kotlinx.coroutines.launch
+import kotlin.code
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,21 +68,52 @@ fun AddFriendScreen(navController: NavController) {
     }
 
     // 发送好友请求
+    // 发送好友请求 (调试版)
     fun sendRequest(user: UserVO) {
+        // 1. 检查 ID 是否存在
+        android.util.Log.d("AddFriendDebug", "准备添加好友: username=${user.username}, userId=${user.userId}")
+
+        if (user.userId.isNullOrBlank()) {
+            Toast.makeText(context, "错误：用户ID为空，无法添加", Toast.LENGTH_SHORT).show()
+            return
+        }
+
         scope.launch {
             try {
+                android.util.Log.d("AddFriendDebug", "正在发起 HTTP 请求: sendFriendRequest...")
+
+                // 2. 发送好友请求
                 val response = RetrofitClient.apiService.sendFriendRequest(user.userId)
+
+                android.util.Log.d("AddFriendDebug", "请求返回: code=${response.code}, msg=${response.message}, success=${response.isSuccess()}")
+
                 if (response.isSuccess()) {
-                    Toast.makeText(context, "已发送好友请求给 ${user.nickname ?: user.username}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "已发送好友请求", Toast.LENGTH_SHORT).show()
+
+                    // 3. 尝试发送打招呼消息 (触发 WebSocket)
+                    try {
+                        android.util.Log.d("AddFriendDebug", "尝试发送打招呼消息...")
+                        val helloContent = "你好，我想添加你为好友"
+                        val msgDto = MessageSendDTO(receiverId = user.userId, content = helloContent)
+                        val msgRes = RetrofitClient.apiService.sendMessage(msgDto)
+                        android.util.Log.d("AddFriendDebug", "打招呼消息结果: ${msgRes.code}")
+                    } catch (e: Exception) {
+                        android.util.Log.e("AddFriendDebug", "打招呼消息发送异常", e)
+                    }
+
                 } else {
-                    Toast.makeText(context, "请求发送失败: ${response.message}", Toast.LENGTH_SHORT).show()
+                    // 业务失败 (如：已经是好友，或后端报错)
+                    Toast.makeText(context, "请求失败: ${response.message}", Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
+                // 网络或解析异常
+                android.util.Log.e("AddFriendDebug", "发生严重异常", e)
                 e.printStackTrace()
-                Toast.makeText(context, "网络错误", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "网络错误: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
     }
+
 
     Scaffold(
         topBar = {

@@ -32,6 +32,11 @@ public class FriendshipController {
         return Result.success();
     }
 
+    @GetMapping("/request/pending")
+    public Result<List<FriendListVO>> getFriendRequestList() {
+        return Result.success(friendshipService.getPendingRequests());
+    }
+
     @PutMapping("/{friendId}/accept")
     public Result acceptFriendRequest(@PathVariable String friendId) {
         friendshipService.acceptRequest(UUID.fromString(friendId));

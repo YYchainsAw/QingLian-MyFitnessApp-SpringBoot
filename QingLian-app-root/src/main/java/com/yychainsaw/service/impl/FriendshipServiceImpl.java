@@ -111,4 +111,33 @@ public class FriendshipServiceImpl implements FriendshipService {
         UUID userId = ThreadLocalUtil.getCurrentUserId();
         return friendshipMapper.selectFriendList(userId);
     }
+
+    @Override
+    public List<FriendListVO> getPendingRequests() {
+        UUID userId = ThreadLocalUtil.getCurrentUserId();
+        QueryWrapper<Friendship> wrapper = new QueryWrapper<>();
+
+        wrapper.eq("friend_id", userId).eq("status", "PENDING");
+        List<Friendship> pendingRequests = friendshipMapper.selectList(wrapper);
+
+        if (pendingRequests.isEmpty()) {
+            return java.util.Collections.emptyList();
+        }
+
+        List<UUID> requesterIds = pendingRequests.stream()
+                .map(Friendship::getUserId)
+                .collect(java.util.stream.Collectors.toList());
+
+        List<User> requesters = userMapper.selectBatchIds(requesterIds);
+
+        return requesters.stream().map(user -> {
+            FriendListVO vo = new FriendListVO();
+            vo.setUserId(user.getUserId());
+            vo.setUsername(user.getUsername());
+            vo.setNickname(user.getNickname());
+            vo.setAvatarUrl(user.getAvatarUrl());
+
+            return vo;
+        }).collect(java.util.stream.Collectors.toList());
+    }
 }

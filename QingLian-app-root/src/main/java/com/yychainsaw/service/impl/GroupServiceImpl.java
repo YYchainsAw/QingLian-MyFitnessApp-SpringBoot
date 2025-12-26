@@ -14,7 +14,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class GroupServiceImpl implements GroupService {
@@ -56,6 +59,14 @@ public class GroupServiceImpl implements GroupService {
     }
 
     @Override
+    public List<GroupMember> getGroupMembers(Long groupId) {
+        QueryWrapper<GroupMember> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("group_id", groupId);
+
+        return groupMemberMapper.selectList(queryWrapper);
+    }
+
+    @Override
     @Transactional(rollbackFor = Exception.class)
     public ChatGroup createGroup(GroupCreateDTO dto) {
         UUID userId = ThreadLocalUtil.getCurrentUserId();
@@ -78,5 +89,27 @@ public class GroupServiceImpl implements GroupService {
         groupMemberMapper.insert(member);
 
         return group;
+    }
+
+    @Override
+    public List<ChatGroup> getUserGroups() {
+        UUID userId = ThreadLocalUtil.getCurrentUserId();
+
+        // 1. 查询该用户参与的所有成员记录
+        QueryWrapper<GroupMember> query = new QueryWrapper<>();
+        query.eq("user_id", userId);
+        List<GroupMember> members = groupMemberMapper.selectList(query);
+
+        if (members.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        // 2. 提取所有群组 ID
+        List<Long> groupIds = members.stream()
+                .map(GroupMember::getGroupId)
+                .collect(Collectors.toList());
+
+        // 3. 批量查询群组信息
+        return chatGroupMapper.selectBatchIds(groupIds);
     }
 }
