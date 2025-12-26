@@ -47,6 +47,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 
+// ... (IChatItem, FriendItemWrapper, GroupItemWrapper 保持不变) ...
 interface IChatItem {
     val id: String
     val sortTime: String?
@@ -71,39 +72,38 @@ fun MessageListScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    // 显示列表数据
     var displayList by remember { mutableStateOf<List<IChatItem>>(emptyList()) }
-    // 原始好友数据（用于创建群聊时选择）
     var allFriends by remember { mutableStateOf<List<FriendVO>>(emptyList()) }
 
+    // 初始值为 true，保证第一次进入时显示加载动画
     var isLoading by remember { mutableStateOf(true) }
     var showCreateGroupDialog by remember { mutableStateOf(false) }
 
-    // 1. 刷新未读数
     LaunchedEffect(Unit) { mainViewModel.refreshUnreadCount() }
 
-    // 2. 连接 WebSocket
     LaunchedEffect(Unit) {
         val token = TokenManager.getToken(context)
         if (!token.isNullOrEmpty()) WebSocketManager.connect(token)
     }
 
-
     fun loadAllData() {
-        isLoading = true
+        // 【关键修改】：删除 isLoading = true
+        // 这样只有第一次进入页面时(isLoading初始为true)会显示转圈
+        // 后续 WebSocket 触发刷新时，isLoading 已经是 false 了，会在后台静默更新数据
+
         scope.launch {
             try {
-
                 val friendsRes = RetrofitClient.apiService.getFriends()
                 val requestsRes = RetrofitClient.apiService.getPendingFriendRequests()
                 val groupsRes = RetrofitClient.apiService.getMyGroups()
 
-                val validFriends =
-                    if (friendsRes.isSuccess()) friendsRes.data ?: emptyList() else emptyList()
-                val pendingRequests =
-                    if (requestsRes.isSuccess()) requestsRes.data ?: emptyList() else emptyList()
-                val myGroups =
-                    if (groupsRes.isSuccess()) groupsRes.data ?: emptyList() else emptyList()
+                val validFriends = if (friendsRes.isSuccess()) friendsRes.data ?: emptyList() else emptyList()
+                val pendingRequests = if (requestsRes.isSuccess()) requestsRes.data ?: emptyList() else emptyList()
+                val myGroups = if (groupsRes.isSuccess()) groupsRes.data ?: emptyList() else emptyList()
+
+                myGroups.forEach { group ->
+                    WebSocketManager.joinGroup(group.groupId)
+                }
 
                 allFriends = validFriends
 
@@ -116,6 +116,7 @@ fun MessageListScreen(
             } catch (e: Exception) {
                 e.printStackTrace()
             } finally {
+                // 无论成功失败，最后都确保取消 loading 状态
                 isLoading = false
             }
         }
@@ -123,31 +124,21 @@ fun MessageListScreen(
 
     LaunchedEffect(Unit) { loadAllData() }
 
-
     LaunchedEffect(Unit) {
         WebSocketManager.messageFlow.collect { loadAllData() }
     }
 
+    // ... (Scaffold 及后续 UI 代码保持不变) ...
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text("消息", fontWeight = FontWeight.Bold) },
                 actions = {
-
                     IconButton(onClick = { showCreateGroupDialog = true }) {
-                        Icon(
-                            Icons.Default.Add,
-                            contentDescription = "Create Group",
-                            tint = Color.Black
-                        )
+                        Icon(Icons.Default.Add, contentDescription = "Create Group", tint = Color.Black)
                     }
-
                     IconButton(onClick = { navController.navigate("add_friend") }) {
-                        Icon(
-                            Icons.Default.GroupAdd,
-                            contentDescription = "Add Friend",
-                            tint = Color.Black
-                        )
+                        Icon(Icons.Default.GroupAdd, contentDescription = "Add Friend", tint = Color.Black)
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.White)
@@ -166,36 +157,24 @@ fun MessageListScreen(
             ) {
                 if (displayList.isEmpty()) {
                     item {
-                        Box(
-                            modifier = Modifier.fillMaxWidth().padding(top = 100.dp),
-                            contentAlignment = Alignment.Center
-                        ) { Text("暂无消息", color = Color.Gray) }
+                        Box(modifier = Modifier.fillMaxWidth().padding(top = 100.dp), contentAlignment = Alignment.Center) {
+                            Text("暂无消息", color = Color.Gray)
+                        }
                     }
                 } else {
                     items(displayList) { item ->
                         when (item) {
                             is FriendItemWrapper -> {
                                 FriendItemView(friend = item.friend) {
-                                    val encodedAvatar =
-                                        if (item.friend.avatarUrl != null) URLEncoder.encode(
-                                            item.friend.avatarUrl,
-                                            StandardCharsets.UTF_8.toString()
-                                        ) else ""
-                                    val displayName =
-                                        item.friend.nickname?.takeIf { it.isNotBlank() }
-                                            ?: item.friend.username
+                                    val encodedAvatar = if (item.friend.avatarUrl != null) URLEncoder.encode(item.friend.avatarUrl, StandardCharsets.UTF_8.toString()) else ""
+                                    val displayName = item.friend.nickname?.takeIf { it.isNotBlank() } ?: item.friend.username
                                     navController.navigate("chat/${item.friend.userId}/$displayName?avatar=$encodedAvatar")
                                 }
                             }
-
                             is GroupItemWrapper -> {
                                 GroupItemView(group = item.group) {
-
                                     val encodedName = URLEncoder.encode(item.group.name, StandardCharsets.UTF_8.toString())
-                                    val encodedAvatar = if (item.group.avatarUrl != null)
-                                        URLEncoder.encode(item.group.avatarUrl, StandardCharsets.UTF_8.toString())
-                                    else ""
-
+                                    val encodedAvatar = if (item.group.avatarUrl != null) URLEncoder.encode(item.group.avatarUrl, StandardCharsets.UTF_8.toString()) else ""
                                     navController.navigate("chat/GROUP_${item.group.groupId}/$encodedName?avatar=$encodedAvatar")
                                 }
                             }
@@ -213,53 +192,24 @@ fun MessageListScreen(
             onConfirm = { groupName, selectedIds ->
                 scope.launch {
                     try {
-
-                        val createDto = GroupCreateDTO(
-                            name = groupName,
-                            notice = "欢迎加入群聊",
-                            avatarUrl = ""
-                        )
-
-
+                        val createDto = GroupCreateDTO(name = groupName, notice = "欢迎加入群聊", avatarUrl = "")
                         val createRes = RetrofitClient.apiService.createGroup(createDto)
 
                         if (createRes.isSuccess() && createRes.data != null) {
                             val groupId = createRes.data
-
-
                             if (selectedIds.isNotEmpty()) {
                                 try {
                                     val memberDto = GroupMemberAddDTO(userIds = selectedIds)
-                                    val addRes = RetrofitClient.apiService.addGroupMembers(
-                                        groupId,
-                                        memberDto
-                                    )
-                                    if (!addRes.isSuccess()) {
-                                        Toast.makeText(
-                                            context,
-                                            "群已创建，但邀请成员失败: ${addRes.message}",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
-                                    }
+                                    RetrofitClient.apiService.addGroupMembers(groupId, memberDto)
                                 } catch (e: Exception) {
                                     e.printStackTrace()
-                                    Toast.makeText(
-                                        context,
-                                        "群已创建，但邀请成员时发生错误",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
                                 }
                             }
-
                             Toast.makeText(context, "创建成功", Toast.LENGTH_SHORT).show()
                             showCreateGroupDialog = false
                             loadAllData()
                         } else {
-                            Toast.makeText(
-                                context,
-                                "创建失败: ${createRes.message}",
-                                Toast.LENGTH_SHORT
-                            ).show()
+                            Toast.makeText(context, "创建失败: ${createRes.message}", Toast.LENGTH_SHORT).show()
                         }
                     } catch (e: Exception) {
                         e.printStackTrace()
@@ -271,8 +221,7 @@ fun MessageListScreen(
     }
 }
 
-// --- UI 组件 ---
-
+// ... (GroupItemView, FriendItemView, CreateGroupDialog, formatFriendlyTime 保持不变) ...
 @Composable
 fun GroupItemView(group: ChatGroupVO, onClick: () -> Unit) {
     Row(
@@ -312,7 +261,6 @@ fun GroupItemView(group: ChatGroupVO, onClick: () -> Unit) {
 
 @Composable
 fun FriendItemView(friend: FriendVO, onClick: () -> Unit) {
-    // 复用之前的 FriendItem 逻辑，改个名
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -426,10 +374,10 @@ fun CreateGroupDialog(
         }
     }
 }
+
 fun formatFriendlyTime(timeStr: String?): String {
     if (timeStr.isNullOrBlank()) return ""
     try {
-        // 假设后端返回的时间格式是 ISO 8601 (例如: 2023-10-27T10:00:00)
         val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
         val date = sdf.parse(timeStr) ?: return ""
 
@@ -437,23 +385,18 @@ fun formatFriendlyTime(timeStr: String?): String {
         val msgTime = Calendar.getInstance().apply { time = date }
 
         return when {
-            // 如果是今天，显示 HH:mm
             now.get(Calendar.YEAR) == msgTime.get(Calendar.YEAR) &&
                     now.get(Calendar.DAY_OF_YEAR) == msgTime.get(Calendar.DAY_OF_YEAR) -> {
                 SimpleDateFormat("HH:mm", Locale.getDefault()).format(date)
             }
-            // 如果是今年，显示 MM-dd
             now.get(Calendar.YEAR) == msgTime.get(Calendar.YEAR) -> {
                 SimpleDateFormat("MM-dd", Locale.getDefault()).format(date)
             }
-            // 否则显示 yyyy-MM-dd
             else -> {
                 SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(date)
             }
         }
     } catch (e: Exception) {
-        // 解析失败则不显示或显示原字符串
         return ""
     }
 }
-// formatFriendlyTime 保持不变

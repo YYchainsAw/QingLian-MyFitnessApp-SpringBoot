@@ -4,6 +4,7 @@ import com.yychainsaw.pojo.dto.GroupCreateDTO;
 import com.yychainsaw.pojo.dto.Result;
 import com.yychainsaw.pojo.entity.ChatGroup;
 import com.yychainsaw.pojo.entity.GroupMember;
+import com.yychainsaw.pojo.vo.GroupListVO;
 import com.yychainsaw.service.GroupService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
@@ -30,7 +31,7 @@ public class GroupController {
 
     // 【新增】获取群组列表 (解决 GET /groups 报 405 的问题)
     @GetMapping
-    public Result<List<ChatGroup>> getUserGroups() {
+    public Result<List<GroupListVO>> getUserGroups() {
         return Result.success(groupService.getUserGroups());
     }
 

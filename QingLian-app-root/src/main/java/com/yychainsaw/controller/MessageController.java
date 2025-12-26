@@ -99,4 +99,28 @@ public class MessageController {
 
         return Result.success(pageBean);
     }
+
+    @GetMapping("/groups/{groupId}/history")
+    public Result<PageBean<Message>> getGroupChatHistory(
+            @PathVariable Long groupId,
+            @RequestParam(defaultValue = "1") Integer pageNum,
+            @RequestParam(defaultValue = "20") Integer pageSize) {
+
+        // 1. 开启分页
+        PageHelper.startPage(pageNum, pageSize);
+
+        // 2. 调用 Service 查询群消息
+        List<Message> history = messageService.getGroupChatHistory(groupId);
+
+        // 3. 获取分页信息
+        PageInfo<Message> pageInfo = new PageInfo<>(history);
+
+        // 4. 反转列表 (旧 -> 新) 供前端展示
+        List<Message> resultList = pageInfo.getList();
+        Collections.reverse(resultList);
+
+        // 5. 封装返回
+        PageBean<Message> pageBean = new PageBean<>(pageInfo.getTotal(), resultList);
+        return Result.success(pageBean);
+    }
 }

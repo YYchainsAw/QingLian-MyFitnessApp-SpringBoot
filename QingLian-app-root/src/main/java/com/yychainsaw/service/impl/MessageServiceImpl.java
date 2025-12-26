@@ -93,4 +93,12 @@ public class MessageServiceImpl implements MessageService {
         UUID userId = ThreadLocalUtil.getCurrentUserId();
         messageMapper.markGroupAsRead(groupId, userId, lastMsgId);
     }
+
+    @Override
+    public List<Message> getGroupChatHistory(Long groupId) {
+        QueryWrapper<Message> query = new QueryWrapper<>();
+        query.eq("group_id", groupId);
+        query.orderByDesc("sent_at");
+        return messageMapper.selectList(query);
+    }
 }

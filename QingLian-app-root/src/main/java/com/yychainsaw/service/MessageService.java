@@ -17,4 +17,7 @@ public interface MessageService {
     List<Message> getChatHistory(UUID uuid1);
 
     void markGroupAsRead(Long groupId, Long lastMsgId);
+
+    List<Message> getGroupChatHistory(Long groupId);
+
 }
