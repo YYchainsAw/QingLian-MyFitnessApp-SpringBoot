@@ -115,8 +115,11 @@ fun ProfileScreen(navController: NavController) {
                                 fontWeight = FontWeight.Bold,
                                 color = Color.Black
                             )
-                            // 预留：编辑资料入口 (updateUserInfo)
-                            IconButton(onClick = { /* TODO: 跳转编辑资料页 */ }, modifier = Modifier.size(24.dp).padding(start = 8.dp)) {
+                            // 跳转编辑资料页
+                            IconButton(
+                                onClick = { navController.navigate("edit_profile") },
+                                modifier = Modifier.size(24.dp).padding(start = 8.dp)
+                            ) {
                                 Icon(Icons.Default.Edit, contentDescription = "Edit", tint = Color.Black.copy(alpha = 0.6f))
                             }
                         }

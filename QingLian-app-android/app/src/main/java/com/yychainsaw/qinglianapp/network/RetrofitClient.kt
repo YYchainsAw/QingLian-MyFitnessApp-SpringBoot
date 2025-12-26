@@ -7,7 +7,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 
 object RetrofitClient {
-    private const val BASE_URL = "https://7ed0e058.r7.cpolar.top/"
+    private const val BASE_URL = "https://4534bc2e.r7.cpolar.top/"
 
     // 全局保存 Token，在 MainActivity 启动或登录成功时赋值
     var authToken: String? = null
@@ -32,10 +32,10 @@ object RetrofitClient {
 
                 chain.proceed(requestBuilder.build())
             }
-            // 修改超时时间为 5 分钟，解决批量上传图片超时问题
+
             .connectTimeout(5, TimeUnit.MINUTES)
             .readTimeout(5, TimeUnit.MINUTES)
-            .writeTimeout(5, TimeUnit.MINUTES) // 上传文件主要依赖写入超时
+            .writeTimeout(5, TimeUnit.MINUTES)
             .build()
     }
 

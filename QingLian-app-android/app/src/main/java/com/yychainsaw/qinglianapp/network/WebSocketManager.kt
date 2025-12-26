@@ -19,7 +19,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 object WebSocketManager {
     // 保持你的 URL 和 topic 路径不变 (根据日志，你的路径是用 . 分隔的)
-    private const val WS_URL = "wss://7ed0e058.r7.cpolar.top/ws/websocket"
+    private const val WS_URL = "wss://4534bc2e.r7.cpolar.top/ws/websocket"
     private const val SUBSCRIBE_DESTINATION = "/user/queue/messages"
 
     private var stompClient: StompClient? = null

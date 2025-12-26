@@ -2,7 +2,7 @@ package com.yychainsaw.qinglianapp.data.api
 
 import retrofit2.http.*
 
-// 定义数据模型 (DTO/VO)
+
 data class LoginReq(val username: String, val password: String)
 data class TokenResp(val token: String, val userId: Long)
 data class PostVO(val id: Long, val content: String, val username: String, val likeCount: Int)
