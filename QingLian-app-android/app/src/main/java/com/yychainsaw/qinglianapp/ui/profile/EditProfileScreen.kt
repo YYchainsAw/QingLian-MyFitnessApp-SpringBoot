@@ -11,6 +11,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -31,12 +32,8 @@ import coil.compose.AsyncImage
 import com.yychainsaw.qinglianapp.data.model.dto.UserUpdateDTO
 import com.yychainsaw.qinglianapp.network.RetrofitClient
 import com.yychainsaw.qinglianapp.ui.theme.QingLianYellow
+import com.yychainsaw.qinglianapp.utils.UriUtils
 import kotlinx.coroutines.launch
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.MultipartBody
-import okhttp3.RequestBody.Companion.asRequestBody
-import java.io.File
-import java.io.FileOutputStream
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,42 +43,43 @@ fun EditProfileScreen(navController: NavController) {
 
     // 表单状态
     var nickname by remember { mutableStateOf("") }
-    var gender by remember { mutableStateOf("") }
+    var gender by remember { mutableStateOf("MALE") } // 默认为 MALE，加载后会更新
     var height by remember { mutableStateOf("") }
     var weight by remember { mutableStateOf("") }
-    var avatarUrl by remember { mutableStateOf("") }
+    var avatarUrl by remember { mutableStateOf<String?>(null) }
+
     var isLoading by remember { mutableStateOf(true) }
 
-    // 图片选择器
-    val photoPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia()
-    ) { uri: Uri? ->
-        if (uri != null) {
-            scope.launch {
-                uploadAndSetAvatar(context, uri) { newUrl ->
-                    avatarUrl = newUrl
-                }
-            }
-        }
-    }
-
-    // 初始化加载用户信息
+    // 1. 加载初始数据
     LaunchedEffect(Unit) {
         try {
             val response = RetrofitClient.apiService.getUserInfo()
             if (response.isSuccess() && response.data != null) {
                 val user = response.data
                 nickname = user.nickname ?: ""
-                gender = user.gender ?: ""
-                // 确保 UserVO 中有 height 和 weight 字段
+                // 如果后端返回 null，默认给 MALE，否则使用后端值
+                gender = user.gender ?: "MALE"
                 height = user.height?.toString() ?: ""
                 weight = user.weight?.toString() ?: ""
-                avatarUrl = user.avatarUrl ?: ""
+                avatarUrl = user.avatarUrl
             }
         } catch (e: Exception) {
-            Toast.makeText(context, "加载失败: ${e.message}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "加载用户信息失败", Toast.LENGTH_SHORT).show()
         } finally {
             isLoading = false
+        }
+    }
+
+    // 图片选择器
+    val pickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            scope.launch {
+                uploadAndSetAvatar(context, uri) { newUrl ->
+                    avatarUrl = newUrl
+                }
+            }
         }
     }
 
@@ -97,63 +95,45 @@ fun EditProfileScreen(navController: NavController) {
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = QingLianYellow)
             )
         }
-    ) { paddingValues ->
+    ) { padding ->
         if (isLoading) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
+                CircularProgressIndicator(color = QingLianYellow)
             }
         } else {
             Column(
                 modifier = Modifier
+                    .padding(padding)
                     .fillMaxSize()
-                    .padding(paddingValues)
                     .verticalScroll(rememberScrollState())
                     .padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                // 头像区域
-                Box(
-                    modifier = Modifier
-                        .size(100.dp)
-                        .clickable {
-                            photoPickerLauncher.launch(
-                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                            )
-                        },
-                    contentAlignment = Alignment.BottomEnd
-                ) {
-                    if (avatarUrl.isNotEmpty()) {
-                        AsyncImage(
-                            model = avatarUrl,
-                            contentDescription = "Avatar",
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clip(CircleShape),
-                            contentScale = ContentScale.Crop
-                        )
-                    } else {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clip(CircleShape)
-                                .background(Color.LightGray)
-                        )
-                    }
-                    Icon(
-                        imageVector = Icons.Default.CameraAlt,
-                        contentDescription = "Change Avatar",
-                        tint = Color.White,
+                // 头像编辑区域
+                Box(modifier = Modifier.clickable {
+                    pickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                }) {
+                    AsyncImage(
+                        model = avatarUrl,
+                        contentDescription = "Avatar",
                         modifier = Modifier
-                            .background(Color.Black.copy(alpha = 0.6f), CircleShape)
-                            .padding(4.dp)
-                            .size(16.dp)
+                            .size(100.dp)
+                            .clip(CircleShape)
+                            .background(Color.LightGray),
+                        contentScale = ContentScale.Crop
                     )
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .background(Color.Black.copy(alpha = 0.6f), CircleShape)
+                            .padding(6.dp)
+                    ) {
+                        Icon(Icons.Default.CameraAlt, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                    }
                 }
-                Text("点击修改头像", color = Color.Gray, modifier = Modifier.padding(top = 8.dp))
 
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // 编辑表单
+                // 昵称输入
                 OutlinedTextField(
                     value = nickname,
                     onValueChange = { nickname = it },
@@ -162,129 +142,131 @@ fun EditProfileScreen(navController: NavController) {
                     singleLine = true
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                // 性别选择 (UI显示中文，State存储英文枚举)
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = "性别",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Start
+                    ) {
+                        // 选项：男
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .clickable { gender = "MALE" }
+                                .padding(end = 24.dp)
+                        ) {
+                            RadioButton(
+                                selected = gender == "MALE",
+                                onClick = { gender = "MALE" },
+                                colors = RadioButtonDefaults.colors(selectedColor = QingLianYellow)
+                            )
+                            Text("男")
+                        }
 
+                        // 选项：女
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.clickable { gender = "FEMALE" }
+                        ) {
+                            RadioButton(
+                                selected = gender == "FEMALE",
+                                onClick = { gender = "FEMALE" },
+                                colors = RadioButtonDefaults.colors(selectedColor = QingLianYellow)
+                            )
+                            Text("女")
+                        }
+                    }
+                }
+
+                // 身高输入
                 OutlinedTextField(
-                    value = gender,
-                    onValueChange = { gender = it },
-                    label = { Text("性别") },
+                    value = height,
+                    onValueChange = { height = it },
+                    label = { Text("身高 (cm)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+
+                // 体重输入
+                OutlinedTextField(
+                    value = weight,
+                    onValueChange = { weight = it },
+                    label = { Text("体重 (kg)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    OutlinedTextField(
-                        value = height,
-                        onValueChange = { height = it },
-                        label = { Text("身高 (cm)") },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                    )
-                    Spacer(modifier = Modifier.width(16.dp))
-                    OutlinedTextField(
-                        value = weight,
-                        onValueChange = { weight = it },
-                        label = { Text("体重 (kg)") },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(32.dp))
-
                 // 保存按钮
                 Button(
                     onClick = {
                         scope.launch {
-                            isLoading = true
                             try {
-                                // 使用命名参数构建 DTO，确保字段对应正确
                                 val updateDto = UserUpdateDTO(
                                     nickname = nickname,
-                                    avatarUrl = avatarUrl,
-                                    gender = gender,
+                                    gender = gender, // 传输 "MALE" 或 "FEMALE"
                                     height = height.toDoubleOrNull(),
-                                    weight = weight.toDoubleOrNull()
+                                    weight = weight.toDoubleOrNull(),
+                                    avatarUrl = avatarUrl
                                 )
-                                val response = RetrofitClient.apiService.updateUserInfo(updateDto)
-                                if (response.isSuccess()) {
-                                    Toast.makeText(context, "保存成功", Toast.LENGTH_SHORT).show()
+                                val res = RetrofitClient.apiService.updateUserInfo(updateDto)
+                                if (res.isSuccess()) {
+                                    Toast.makeText(context, "修改成功", Toast.LENGTH_SHORT).show()
                                     navController.popBackStack()
                                 } else {
-                                    Toast.makeText(context, "保存失败", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, "修改失败: ${res.message}", Toast.LENGTH_SHORT).show()
                                 }
                             } catch (e: Exception) {
-                                Toast.makeText(context, "错误: ${e.message}", Toast.LENGTH_SHORT).show()
-                            } finally {
-                                isLoading = false
+                                Toast.makeText(context, "网络错误", Toast.LENGTH_SHORT).show()
+                                e.printStackTrace()
                             }
                         }
                     },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = QingLianYellow)
+                    modifier = Modifier.fillMaxWidth().height(50.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = QingLianYellow),
+                    shape = RoundedCornerShape(25.dp)
                 ) {
-                    Text("保存修改", color = Color.Black)
+                    Text("保存修改", color = Color.Black, style = MaterialTheme.typography.titleMedium)
                 }
             }
         }
     }
 }
 
-// 辅助函数：处理上传逻辑
+// 辅助函数：上传头像
 private suspend fun uploadAndSetAvatar(
     context: Context,
     uri: Uri,
     onSuccess: (String) -> Unit
 ) {
     try {
-        val file = uriToFile(context, uri)
-        if (file == null) {
-            Toast.makeText(context, "文件读取失败", Toast.LENGTH_SHORT).show()
-            return
-        }
+        // 使用 UriUtils 准备文件 Part
+        val part = UriUtils.prepareFilePart(context, uri, "file")
 
-        val requestFile = file.asRequestBody("image/*".toMediaTypeOrNull())
-        val body = MultipartBody.Part.createFormData("file", file.name, requestFile)
-
-        Toast.makeText(context, "正在上传...", Toast.LENGTH_SHORT).show()
-
-        val uploadResponse = RetrofitClient.apiService.upload(body)
-
-        if (uploadResponse.isSuccess() && uploadResponse.data != null) {
-            val uploadedUrl = uploadResponse.data
-            val updateResponse = RetrofitClient.apiService.updateAvatar(uploadedUrl)
-
-            if (updateResponse.isSuccess) {
-                Toast.makeText(context, "头像更新成功", Toast.LENGTH_SHORT).show()
-                onSuccess(uploadedUrl)
+        if (part != null) {
+            val uploadResponse = RetrofitClient.apiService.upload(part)
+            if (uploadResponse.isSuccess() && uploadResponse.data != null) {
+                val newUrl = uploadResponse.data
+                onSuccess(newUrl)
+                // 可选：立即调用更新头像接口，或者等待用户点击保存时统一更新
+                RetrofitClient.apiService.updateAvatar(newUrl)
             } else {
-                Toast.makeText(context, "头像更新失败", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "图片上传失败", Toast.LENGTH_SHORT).show()
             }
         } else {
-            Toast.makeText(context, "上传失败", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "文件读取失败", Toast.LENGTH_SHORT).show()
         }
     } catch (e: Exception) {
         e.printStackTrace()
-        Toast.makeText(context, "发生错误: ${e.message}", Toast.LENGTH_SHORT).show()
-    }
-}
-
-private fun uriToFile(context: Context, uri: Uri): File? {
-    return try {
-        val contentResolver = context.contentResolver
-        val tempFile = File.createTempFile("avatar_upload", ".jpg", context.cacheDir)
-        val inputStream = contentResolver.openInputStream(uri) ?: return null
-        val outputStream = FileOutputStream(tempFile)
-        inputStream.copyTo(outputStream)
-        inputStream.close()
-        outputStream.close()
-        tempFile
-    } catch (e: Exception) {
-        e.printStackTrace()
-        null
+        Toast.makeText(context, "上传出错: ${e.message}", Toast.LENGTH_SHORT).show()
     }
 }

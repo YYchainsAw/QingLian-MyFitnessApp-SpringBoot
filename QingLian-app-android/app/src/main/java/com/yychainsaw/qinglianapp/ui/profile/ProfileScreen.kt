@@ -164,7 +164,14 @@ fun ProfileScreen(navController: NavController) {
             ) {
                 StatItem(label = "身高", value = "${userVO?.height ?: "--"} cm")
                 StatItem(label = "体重", value = "${userVO?.weight ?: "--"} kg")
-                StatItem(label = "性别", value = userVO?.gender ?: "--")
+
+                // 修改性别显示逻辑
+                val genderDisplay = when (userVO?.gender) {
+                    "MALE" -> "男"
+                    "FEMALE" -> "女"
+                    else -> "未知"
+                }
+                StatItem(label = "性别", value = genderDisplay)
             }
         }
 
