@@ -49,11 +49,33 @@ public class FriendshipServiceImpl implements FriendshipService {
             throw new IllegalArgumentException("不能添加自己为好友");
         }
 
+        QueryWrapper<Friendship> queryWrapper = new QueryWrapper<>();
+        queryWrapper.and(wrapper -> wrapper
+                .nested(i -> i.eq("user_id", userId).eq("friend_id", friendId))
+                .or()
+                .nested(i -> i.eq("user_id", friendId).eq("friend_id", userId))
+        );
+
+        Friendship existing = friendshipMapper.selectOne(queryWrapper);
+
+        if (existing != null) {
+            if ("ACCEPTED".equals(existing.getStatus())) {
+                throw new IllegalArgumentException("你们已经是好友了");
+            } else if ("PENDING".equals(existing.getStatus())) {
+                if (existing.getUserId().equals(userId)) {
+                    throw new IllegalArgumentException("你已经发送过申请，请勿重复发送");
+                } else {
+                    throw new IllegalArgumentException("对方已经向你发送了申请，请前往“好友申请”列表处理");
+                }
+            }
+        }
+
         Friendship friendship = new Friendship();
         friendship.setUserId(userId);
         friendship.setFriendId(friendId);
         friendship.setStatus("PENDING");
         friendshipMapper.insert(friendship);
+
 
         User friend = userMapper.selectById(friendId);
 
