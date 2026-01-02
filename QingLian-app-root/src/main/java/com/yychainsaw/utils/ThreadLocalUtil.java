@@ -3,9 +3,6 @@ package com.yychainsaw.utils;
 import java.util.Map;
 import java.util.UUID;
 
-/**
- * ThreadLocal 工具类
- */
 
 @SuppressWarnings("all")
 public class ThreadLocalUtil {
